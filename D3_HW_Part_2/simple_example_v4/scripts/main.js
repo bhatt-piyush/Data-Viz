@@ -4,7 +4,7 @@
 	var width = 400;
 	var height = 300;
 
-	var dataXRange = { min: 40, max: 100 };
+	var dataXRange = { min: 0, max: 40 };
 	var dataYRange = { min: 0, max: 100 };
 	var xAxisLabelHeader = "X Header";
 	var yAxisLabelHeader = "Y Header";
@@ -28,11 +28,11 @@
 				return console.warn(error);
 			} else {
 				data = json;
-				console.log("JSON loaded");
+				console.log("JSON loaded", data[0]);
 				initializeChart();
 				createAxes();
 
-				// drawDots();
+				drawDots();
 
 				// you could load more data here using d3.json() again...
 
@@ -55,10 +55,10 @@
 		// x axis
 		chart.xScale = d3.scaleLinear()
 			.domain([dataXRange.min, dataXRange.max])
-			.range([0, chartWidth]);
+			.range([0, chartWidth]); //will draw the line, NOT THE TICKS!!!!
 
 		chart.xAxis = d3.axisBottom()
-			.tickSizeOuter(0)
+			.tickSizeOuter(10)  //will draw the end of the X AXIS ticks!
 			.scale(chart.xScale);
 
 		chart.xAxisContainer = chart.append("g")
@@ -95,54 +95,106 @@
 			.attr("transform", "translate(" + (margin.left / 2.0) + ", " + (chartHeight / 2.0) + ") rotate(-90)")
 			.text(yAxisLabelHeader);
 	}
-	var currData = []
-	function drawDots() {
-		// do something with the data here!
 
-		// plot dots
-		// console.log(data[0].xVal)
-		var dots = chart.plotArea.selectAll(".dot")
-			.data(currData)//, function (d, i) {return d.id })
-			.enter().append("circle")
-				.attr("class", "dot")
-				.attr('id', function (d, i) { return d.id})
-				.attr("cx", function(d) { return chart.xScale(d.xVal); })
-				.attr("cy", function(d) { return chart.yScale(d.yVal); })
-				.attr("r", circleRadius)
-			// .merge(dots)
-				.transition()//				.delay(400)
-				.duration(2500)
-				.attr('cx', function(d) { return chart.xScale(0); });
-		
-		// dots.exit()
-		// 	.transition()
-		// 	.duration(800)
-		// 	.remove();
+	function drawDots() {
+		var jsonData = [];
+
+		var timer = d3.timer(timerCallback);
+		var i = 0
+
+		function timerCallback(elapsed){
+
+
+			if(elapsed > 150){
+				jsonData.push(data[i]);
+			//console.log(jsonData[jsonData.length-1].xVal)
+			i ++;
+			
+			//Piyush
+			if((jsonData[jsonData.length-1].xVal - jsonData[0]) > 40){
+				console.log()
+				jsonData.shift();
+			}
+			//
+
+
+			updateCircles(elapsed);
+			updateAxis();
+
+			timer.restart(timerCallback);
+			}
+		}
+
+
+		function updateCircles(elapsed){
+			var dots = chart.plotArea.selectAll(".dot")
+		 	.data(jsonData)
+
+
+		 dots.enter()
+		 	.append("circle")
+		 	.attr("class", "dot")
+		 	.attr("cx", function(d,i) { return chart.xScale(d.xVal);})
+		 	.attr("cy", function(d){ return chart.yScale(d.yVal);})
+		 	.attr("r", circleRadius)
+		 .merge(dots)
+		 	.transition()
+		 	.duration(1500)
+		 	.attr("cx", function(d, i){ return chart.xScale(d.xVal  - 150);});
+
+		 dots.exit().transition()
+		 	.duration(1000)
+		 	.style("fill", "orange")
+		 	.remove();
+
+		}
+
+
+		function updateAxis(){
+
+			chart.xScale = d3.scaleLinear()
+			.domain([dataXRange.min, dataXRange.max])
+			.range([0, chartWidth]); //will draw the line, NOT THE TICKS!!!!
+
+		chart.xAxis = d3.axisBottom()
+			.tickSizeOuter(10)  //will draw the end of the X AXIS ticks!
+			.scale(chart.xScale);
+
+		chart.xAxisContainer = chart.append("g")
+			.attr("class", "x axis scatter-xaxis")
+			.attr("transform", "translate(" + (margin.left) + ", " + (chartHeight + margin.top) + ")")
+			.call(chart.xAxis);
+
+		// x axis header label
+		chart.append("text")
+			.attr("class", "x axis scatter-xaxis")
+			.style("font-size", "12px")
+			.attr("text-anchor", "middle")
+			.attr("transform", "translate(" + (margin.left + chartWidth / 2.0) + ", " + (chartHeight + (margin.bottom / 2.0)) + ")")
+			.text(xAxisLabelHeader);
+
+		// y axis labels
+		chart.yScale = d3.scaleLinear()
+			.domain([dataYRange.min, dataYRange.max])
+			.range([chartHeight, 0]);
+
+		chart.yAxis = d3.axisLeft()
+			.scale(chart.yScale);
+
+		chart.yAxisContainer = chart.append("g")
+			.attr("class", "y axis scatter-yaxis")
+			.attr("transform", "translate(" + margin.left + ", " + margin.top + ")")
+			.call(chart.yAxis);
+
+		// y axis header label
+		chart.append('text')
+			.style("font-size", "12px")
+			.attr("class", "heatmap-yaxis")
+			.attr("text-anchor", "middle")
+			.attr("transform", "translate(" + (margin.left / 2.0) + ", " + (chartHeight / 2.0) + ") rotate(-90)")
+			.text(yAxisLabelHeader);
+
+		}
 	}
-	
-	var tick = 0
-	function timerCallback(elapsed) {
-	  // console.log('tick ' + elapsed);
-	  if (elapsed > 200) {
-	    tick = tick + 1;
-	    currData.push(data[tick]);
-	  
-	    // add to data?
-	    // var newThing = {
-	    //   id: 'newthing' + tick,
-	    //   xVal: Math.random() * 40,
-	    //   yVal: Math.random() * 40
-	    // }
-	    // jsonData.push(newThing);
-	
-	    // remove from data?
-	    // data.shift();
-	    drawDots();
-	
-	   timer.restart(timerCallback);
-	  }
-	}
-	
-	var timer = d3.timer(timerCallback);
-// 
+
 })();
